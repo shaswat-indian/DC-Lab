@@ -1,52 +1,40 @@
-#include<stdio.h>
 #include<mpi.h>
+#include<stdio.h>
 #include<string.h>
-#include<math.h>
 
-double dx_arctan(double x)
+int main(int argc, char*argv[])
 {
-	return 1/(1+(x*x));
-}
 
-int main(int argc, char* argv[])
-{
-	int id,np,n=100000,namesize,i;
+	int n,id,plen,i;
 	char pname[100],details[100];
-
-	double pi1=3.141592653589793238462643;
-	double start,end,h,sum,temp,pi2;
-
-	MPI_Init(&argc,&argv);
-	MPI_Comm_size(MPI_COMM_WORLD,&np);
+	
+	MPI_Init(&argc, &argv);
+	MPI_Status status;
+	MPI_Comm_size(MPI_COMM_WORLD,&n);
 	MPI_Comm_rank(MPI_COMM_WORLD,&id);
-	MPI_Get_processor_name(pname,&namesize);
+	MPI_Get_processor_name(pname,&plen);
 
-
-	printf("Process %d of %d running on %s\n",id,np,pname);
-	fflush(0);
-	MPI_Barrier(MPI_COMM_WORLD);
+	sprintf(details,"Processsor rank %d of %d running on %s\n",id,n,pname);
 
 	if(id==0)
 	{
-		start=MPI_Wtime();
+		printf("%s",details);
+		for(i=1;i<n;i++)
+		{
+			MPI_Recv(details,sizeof(details),MPI_BYTE,i,1,MPI_COMM_WORLD,&status);
+			printf("%s",details);
+		}	
 	}
-	MPI_Bcast(&n,1,MPI_INT,0,MPI_COMM_WORLD);
-	h=1.0/n;
-	sum=0.0;
-	for(i=id+0.5;i<n;i+=np)
-		sum+=dx_arctan(i*h);
-
-	temp=4.0*sum*h;
-	MPI_Reduce(&temp,&pi2,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+	else
+	{
+		MPI_Send(details,strlen(details),MPI_BYTE,0,1,MPI_COMM_WORLD);
+	}
 	if(id==0)
 	{
-		end=MPI_Wtime();
-		printf("\nExpected Value of PI=%.16f\n",pi1);
-		printf("Calculated Value of PI=%.16f\n",pi2);
-		printf("Error=%.16f\n",fabs(pi1-pi2));
-		printf("Total time taken=%f\n",(end-start));
+		printf("Bye World!\n");
 	}
-
+	
 	MPI_Finalize();
+
 	return 0;
 }
